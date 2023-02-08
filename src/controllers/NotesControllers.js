@@ -11,28 +11,30 @@ class NotesController {
       description,
       user_id
     })
-    
-    const linksInsert = links.map(link => {
-      return {
-        note_id,
-        url: link
+    if(note_id) {
+      const linksInsert = links.map(link => {
+        return {
+          note_id : note_id[0],
+          url: link
+        }
+      })
+      await knex('links').insert(linksInsert)
+
+      if(tags && tags.length > 0) {
+        const tagsInsert = tags.map(name => {
+              return {
+                note_id: note_id[0],
+                name,
+                user_id
+              }
+            })
+        await knex('tags').insert(tagsInsert)
+        console.log(tags)
       }
-    })
-    await knex('links').insert(linksInsert)
+    } else {
+      console.log('A nota não foi inserida corretamente')
+    }
 
-    if(tags && tags.length > 0) {
-      const tagsInsert = tags.map(name => {
-            return {
-              note_id,
-              name,
-              user_id
-            }
-          })
-      await knex('tags').insert(tagsInsert)
-      console.log(tags)
-
-  }
-    
     return res.json()
 
   }
@@ -79,21 +81,24 @@ class NotesController {
       .whereLike('notes.title',`%${title}%` )
       .whereIn('name', filterTags)
       .innerJoin('notes', 'notes.id', 'tags.note_id')
+      .groupBy('notes.id')
       .orderBy('notes.title')
   
     }
+
     else{
-      notes = await knex('notes').where({user_id}).whereLike('title', `%${title}%`).orderBy('title')}
+      notes = await knex('notes').where({user_id}).whereLike('title', `%${title}%`).orderBy('title')
+    }
   
-      const userTags = await knex('tags').where({user_id})
-      const notesWithTags = notes.map(note => { 
-        const noteTags = userTags.filter(tag => tag.note_id === note.id)
-      
-      return {
-        ...notes,
-        tags: noteTags
-      }
-        })
+    const userTags = await knex('tags').where({user_id})
+    const notesWithTags = notes.map(note => { 
+      const noteTags = userTags.filter(tag => tag.note_id === note.id)
+    
+    return {
+      ...note,
+      tags: noteTags
+    }
+      })
 
       return res.json(notesWithTags)
     }
